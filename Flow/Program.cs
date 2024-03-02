@@ -1,12 +1,15 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.Text;
-using System.Xml;
 using LanguageExt.Common;
-using LanguageExt.Pretty;
 
 namespace Flow;
 
 class Program {
+    
+    
+    /// <summary>
+    /// Displays the main menu and handles user input to navigate between different functionalities.
+    /// </summary>
     static void Main(string[] args) {
         while (true) {
             PrintMenu();
@@ -36,6 +39,9 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Prints the main menu options to the console.
+    /// </summary>
     private static void PrintMenu() {
         Console.WriteLine();
         Console.WriteLine("Main menu (select with number + enter): ");
@@ -49,6 +55,9 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Handles the single cinema price group calculation based on age input.
+    /// </summary>
     private static void Handle1() {
         var age = RetrieveInput("Age: ", ValidateNumber);
         var priceGroup = CinemaPriceGroupManager.Instance.FindPriceGroup(age);
@@ -57,6 +66,9 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Handles the group cinema price calculation by aggregating individual prices based on age inputs.
+    /// </summary>
     private static void Handle2() {
         var numPersons = RetrieveInput("Number of persons: ", ValidateNumber);
         int sum = 0;
@@ -71,6 +83,9 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Repeats the user's input 10 times, appending a sequential number before each repetition.
+    /// </summary>
     private static void Handle3() {
         Console.Write("Input: ");
         var input = Console.ReadLine() ?? "";
@@ -88,6 +103,12 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Extracts and displays the third word from the user's input sentence.
+    /// </summary>
+    /// <remarks>
+    /// The input is expected to be at least three words long; otherwise, validation will fail.
+    /// </remarks>
     private static void Handle4() {
         var sentenceAtLeastThreeWords = RetrieveInput("Input sentence: ", ValidateSentence);
         var thirdWord = sentenceAtLeastThreeWords[2];
@@ -96,9 +117,18 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Represents a cinema price group with specific age and price criteria.
+    /// </summary>
     private record CinemaPriceGroup(string PriceName, int AgeLowerLimit, int AgeUpperLimit, int Price);
 
 
+    /// <summary>
+    /// Manages cinema price groups and determines the applicable price group based on age.
+    /// </summary>
+    /// <remarks>
+    /// Utilizes a singleton pattern to ensure a single instance manages price group data.
+    /// </remarks>
     private class CinemaPriceGroupManager {
         private static readonly CinemaPriceGroupManager instance = new CinemaPriceGroupManager();
         public static CinemaPriceGroupManager Instance => instance;
@@ -122,6 +152,11 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Validates a sentence ensuring it contains at least three words.
+    /// </summary>
+    /// <param name="input">The input sentence to validate.</param>
+    /// <returns>A Result containing the sentence split into words if valid, otherwise an error.</returns>
     private static Result<string[]> ValidateSentence(string? input) {
         if (string.IsNullOrWhiteSpace(input)) {
             var error = new ValidationException("Error: null or empty input");
@@ -139,6 +174,11 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Validates that the input string represents a non-negative integer.
+    /// </summary>
+    /// <param name="input">The input string to validate.</param>
+    /// <returns>A Result containing the parsed number if valid, otherwise an error.</returns>
     private static Result<int> ValidateNumber(string? input) {
         if (string.IsNullOrWhiteSpace(input)) {
             var error = new ValidationException("Error: null or empty input");
@@ -166,8 +206,16 @@ class Program {
     }
 
 
+    /// <summary>
+    /// Prompts the user for input, validates it using the provided validator function, and repeats the prompt if validation fails.
+    /// </summary>
+    /// <typeparam name="T">The type of the validated input.</typeparam>
+    /// <param name="prompt">The message to display when prompting the user.</param>
+    /// <param name="validator">A function to validate the user's input.</param>
+    /// <returns>The validated input of type T.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if parsing fails.</exception>
     private static T RetrieveInput<T>(string prompt, Func<string?, Result<T>> validator) {
-        T output = default;
+        T? output = default;
 
         while (true) {
             Console.Write(prompt);
