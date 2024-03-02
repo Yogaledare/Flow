@@ -5,8 +5,6 @@ using LanguageExt.Common;
 namespace Flow;
 
 class Program {
-    
-    
     /// <summary>
     /// Displays the main menu and handles user input to navigate between different functionalities.
     /// </summary>
@@ -118,7 +116,7 @@ class Program {
 
 
     /// <summary>
-    /// Represents a cinema price group with specific age and price criteria.
+    /// Represents a cinema price group with specific age range and ticket price.
     /// </summary>
     private record CinemaPriceGroup(string PriceName, int AgeLowerLimit, int AgeUpperLimit, int Price);
 
@@ -138,7 +136,7 @@ class Program {
             _ageGroups = new List<CinemaPriceGroup> {
                 new CinemaPriceGroup("Barnpris: ", 0, 5, 0),
                 new CinemaPriceGroup("Ungdomspris", 0, 19, 80),
-                new CinemaPriceGroup("Pensionärspris", 65, 200, 90),
+                new CinemaPriceGroup("Pensionärspris", 65, int.MaxValue, 90),
                 new CinemaPriceGroup("Standardpris", int.MinValue, int.MaxValue, 120),
             };
         }
@@ -149,6 +147,43 @@ class Program {
                     .MinBy(g => g.Price)!
                 ;
         }
+    }
+
+
+    /// <summary>
+    /// Prompts the user for input, validates it using the provided validator function, and repeats the prompt if validation fails.
+    /// </summary>
+    /// <typeparam name="T">The type of the validated input.</typeparam>
+    /// <param name="prompt">The message to display when prompting the user.</param>
+    /// <param name="validator">A function to validate the user's input.</param>
+    /// <returns>The validated input of type T.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if parsing fails.</exception>
+    private static T RetrieveInput<T>(string prompt, Func<string?, Result<T>> validator) {
+        T? output = default;
+
+        while (true) {
+            Console.Write(prompt);
+            var input = Console.ReadLine();
+            var result = validator(input);
+
+            bool shouldBreak = result.Match(
+                Succ: validatedSentence => {
+                    output = validatedSentence;
+                    return true;
+                },
+                Fail: ex => {
+                    Console.WriteLine(ex.Message);
+                    return false;
+                }
+            );
+
+            if (shouldBreak) {
+                break;
+            }
+        }
+
+        if (output == null) throw new InvalidOperationException("Parsing failed");
+        return output;
     }
 
 
@@ -203,42 +238,5 @@ class Program {
         }
 
         return number;
-    }
-
-
-    /// <summary>
-    /// Prompts the user for input, validates it using the provided validator function, and repeats the prompt if validation fails.
-    /// </summary>
-    /// <typeparam name="T">The type of the validated input.</typeparam>
-    /// <param name="prompt">The message to display when prompting the user.</param>
-    /// <param name="validator">A function to validate the user's input.</param>
-    /// <returns>The validated input of type T.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if parsing fails.</exception>
-    private static T RetrieveInput<T>(string prompt, Func<string?, Result<T>> validator) {
-        T? output = default;
-
-        while (true) {
-            Console.Write(prompt);
-            var input = Console.ReadLine();
-            var result = validator(input);
-
-            bool shouldBreak = result.Match(
-                Succ: validatedSentence => {
-                    output = validatedSentence;
-                    return true;
-                },
-                Fail: ex => {
-                    Console.WriteLine(ex.Message);
-                    return false;
-                }
-            );
-
-            if (shouldBreak) {
-                break;
-            }
-        }
-
-        if (output == null) throw new InvalidOperationException("Parsing failed");
-        return output;
     }
 }
