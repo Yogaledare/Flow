@@ -134,7 +134,7 @@ class Program {
 
         private CinemaPriceGroupManager() {
             _ageGroups = new List<CinemaPriceGroup> {
-                new CinemaPriceGroup("Barnpris: ", 0, 5, 0),
+                new CinemaPriceGroup("Barnpris", 0, 5, 0),
                 new CinemaPriceGroup("Ungdomspris", 0, 19, 80),
                 new CinemaPriceGroup("Pensionärspris", 65, int.MaxValue, 90),
                 new CinemaPriceGroup("Standardpris", int.MinValue, int.MaxValue, 120),
