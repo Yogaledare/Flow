@@ -1,25 +1,18 @@
-﻿namespace Flow;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Xml;
+using LanguageExt.Common;
+using LanguageExt.Pretty;
+
+namespace Flow;
 
 class Program {
     static void Main(string[] args) {
         while (true) {
+            PrintMenu();
+            int selection = RetrieveInput("Selection: ", ValidateNumber);
             Console.WriteLine();
-            Console.WriteLine("Main menu (select with number + enter): ");
-            Console.WriteLine("-----------------------");
-            Console.WriteLine("0. Exit");
-            Console.WriteLine("1. Youth or retiree");
-            Console.WriteLine("2. Groups");
-            Console.WriteLine("-----------------------");
-            Console.Write("Selection: ");
-            var selection = Console.ReadLine();
-            // Console.WriteLine();
-
-            if (!int.TryParse(selection, out int selectionInt)) {
-                Console.WriteLine("Incorrect input");
-                continue;
-            }
-
-            switch (selectionInt) {
+            switch (selection) {
                 case 0:
                     Console.WriteLine("Exiting...");
                     return;
@@ -29,53 +22,77 @@ class Program {
                 case 2:
                     Handle2();
                     break;
+                case 3:
+                    Handle3();
+                    break;
+                case 4:
+                    Handle4();
+                    break;
+                default:
+                    Console.WriteLine("Bad input, try again.");
+                    break;
             }
         }
     }
 
 
+    private static void PrintMenu() {
+        Console.WriteLine();
+        Console.WriteLine("Main menu (select with number + enter): ");
+        Console.WriteLine("-----------------------");
+        Console.WriteLine("0. Exit");
+        Console.WriteLine("1. Cinema, single");
+        Console.WriteLine("2. Cinema, group");
+        Console.WriteLine("3. Repeat 10 times");
+        Console.WriteLine("4. Echo third word");
+        Console.WriteLine("-----------------------");
+    }
+
+
     private static void Handle1() {
-        Console.Write("Age: ");
-        var input = Console.ReadLine();
-        var age = ValidateAgeInput(input);
+        var age = RetrieveInput("Age: ", ValidateNumber);
+        var priceGroup = CinemaPriceGroupManager.Instance.FindPriceGroup(age);
 
-        if (age == null) return;
-
-        var cinemaPriceGroup = CinemaPriceGroupManager.Instance.FindPriceGroup((int) age);
-
-        if (cinemaPriceGroup == null) {
-            Console.WriteLine($"could not find price group for age: {age}");
-            return;
-        }
-
-        Console.WriteLine($"{cinemaPriceGroup.PriceName}: {cinemaPriceGroup.Price}kr");
+        Console.WriteLine($"{priceGroup.PriceName}: {priceGroup.Price}");
     }
 
 
     private static void Handle2() {
-        
+        var numPersons = RetrieveInput("Number of persons: ", ValidateNumber);
+        int sum = 0;
+
+        for (int i = 0; i < numPersons; i++) {
+            var age = RetrieveInput($"Age of person {i + 1}: ", ValidateNumber);
+            var priceGroup = CinemaPriceGroupManager.Instance.FindPriceGroup(age);
+            sum += priceGroup.Price;
+        }
+
+        Console.WriteLine($"Total cost: {sum}");
     }
 
 
-    private static int? ValidateAgeInput(string? input) {
-        if (string.IsNullOrWhiteSpace(input)) {
-            Console.WriteLine("Error: null or empty input");
-            return null;
+    private static void Handle3() {
+        Console.Write("Input: ");
+        var input = Console.ReadLine() ?? "";
+
+        StringBuilder stringBuilder = new StringBuilder();
+
+        for (int i = 0; i < 10; i++) {
+            stringBuilder.Append($"{i + 1}. {input}");
+            if (i < 9) {
+                stringBuilder.Append(", ");
+            }
         }
 
-        var tokens = input.Split(' ');
+        Console.WriteLine(stringBuilder.ToString());
+    }
 
-        if (tokens.Length > 1) {
-            Console.WriteLine("Error: too many inputs");
-            return null;
-        }
 
-        if (!int.TryParse(tokens[0], out int age)) {
-            Console.WriteLine("Error: cannot parse integer");
-            return null;
-        }
+    private static void Handle4() {
+        var sentenceAtLeastThreeWords = RetrieveInput("Input sentence: ", ValidateSentence);
+        var thirdWord = sentenceAtLeastThreeWords[2];
 
-        return age;
+        Console.WriteLine(thirdWord);
     }
 
 
@@ -89,65 +106,91 @@ class Program {
 
         private CinemaPriceGroupManager() {
             _ageGroups = new List<CinemaPriceGroup> {
+                new CinemaPriceGroup("Barnpris: ", 0, 5, 0),
                 new CinemaPriceGroup("Ungdomspris", 0, 19, 80),
-                new CinemaPriceGroup("Standardpris", 20, 64, 120),
                 new CinemaPriceGroup("Pensionärspris", 65, 200, 90),
+                new CinemaPriceGroup("Standardpris", int.MinValue, int.MaxValue, 120),
             };
         }
 
-        public CinemaPriceGroup? FindPriceGroup(int age) {
-            return _ageGroups.FirstOrDefault(group => age >= group.AgeLowerLimit && age <= group.AgeUpperLimit);
+        public CinemaPriceGroup FindPriceGroup(int age) {
+            return _ageGroups
+                    .Where(g => age > g.AgeLowerLimit && age < g.AgeUpperLimit)
+                    .MinBy(g => g.Price)!
+                ;
         }
     }
+
+
+    private static Result<string[]> ValidateSentence(string? input) {
+        if (string.IsNullOrWhiteSpace(input)) {
+            var error = new ValidationException("Error: null or empty input");
+            return new Result<string[]>(error);
+        }
+
+        var tokens = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        if (tokens.Length < 3) {
+            var error = new ValidationException("Error: Sentence needs to be at least three words long");
+            return new Result<string[]>(error);
+        }
+
+        return tokens;
+    }
+
+
+    private static Result<int> ValidateNumber(string? input) {
+        if (string.IsNullOrWhiteSpace(input)) {
+            var error = new ValidationException("Error: null or empty input");
+            return new Result<int>(error);
+        }
+
+        var tokens = input.Split(' ');
+
+        if (tokens.Length > 1) {
+            var error = new ValidationException("Error: too many inputs");
+            return new Result<int>(error);
+        }
+
+        if (!int.TryParse(tokens[0], out int number)) {
+            var error = new ValidationException("Error: cannot parse integer");
+            return new Result<int>(error);
+        }
+
+        if (number < 0) {
+            var error = new ValidationException("Error: cannot have negative number");
+            return new Result<int>(error);
+        }
+
+        return number;
+    }
+
+
+    private static T RetrieveInput<T>(string prompt, Func<string?, Result<T>> validator) {
+        T output = default;
+
+        while (true) {
+            Console.Write(prompt);
+            var input = Console.ReadLine();
+            var result = validator(input);
+
+            bool shouldBreak = result.Match(
+                Succ: validatedSentence => {
+                    output = validatedSentence;
+                    return true;
+                },
+                Fail: ex => {
+                    Console.WriteLine(ex.Message);
+                    return false;
+                }
+            );
+
+            if (shouldBreak) {
+                break;
+            }
+        }
+
+        if (output == null) throw new InvalidOperationException("Parsing failed");
+        return output;
+    }
 }
-
-
-// private enum AgeCategory {
-//     Youth,
-//     Adult,
-//     Retiree
-// }
-//
-//
-// private static AgeCategory FindAgeCategory(int age) {
-//     switch (age) {
-//         case < 20:
-//             return AgeCategory.Youth;
-//         case > 64:
-//             return AgeCategory.Retiree;
-//         default:
-//             return AgeCategory.Adult;
-//     }
-// }
-//
-//
-// private static int FindTicketPrice(AgeCategory ageCategory) {
-//     Dictionary<AgeCategory, int> prices = new Dictionary<AgeCategory, int>() {
-//         {AgeCategory.Youth, 80},
-//         {AgeCategory.Adult, 120},
-//         {AgeCategory.Retiree, 90},
-//     };
-//
-//     return prices[ageCategory];
-// }
-
-
-// private static readonly CinemaAgeGroupManager _instance = new CinemaAgeGroupManager();
-// public static CinemaAgeGroupManager Instance => _instance; 
-
-
-// var ageCategory = FindAgeCategory((int) age);
-// var price = FindTicketPrice(ageCategory);
-
-
-// switch (ageCategory) {
-//     case AgeCategory.Youth:
-//         Console.WriteLine($"Ungdomspris: {price}kr");
-//         return; 
-//     case AgeCategory.Retiree:
-//         Console.WriteLine($"Pensionärspris: {price}kr");
-//         return; 
-//     default:
-//         Console.WriteLine($"Standardpris: {price}kr");
-//         return;
-// }
